@@ -5,7 +5,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const tabStatusLabel = document.getElementById('tab-status-label');
   const tabDescription = document.getElementById('tab-description');
 
-  // Get active tab
+  // Setup tab state
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   if (!tab) return;
   const tabId = tab.id;
@@ -28,7 +28,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   tabToggle.checked = tabEffectiveState;
   updateTabUI(tabEffectiveState);
 
-  // Listeners
+  // Event listeners
   globalToggle.addEventListener('change', async () => {
     const isEnabled = globalToggle.checked;
     await chrome.storage.local.set({ globalEnabled: isEnabled, tabOverrides: {} });

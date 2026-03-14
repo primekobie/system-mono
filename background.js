@@ -1,20 +1,5 @@
-const TARGETED_CSS = `
-code, pre, kbd, samp, textarea, 
-.mono, .monospace, 
-[style*="font-family: monospace"], 
-[style*="font-family: 'monospace'"] {
-  font-family: monospace !important;
-}
-`;
-
-const FORCE_ALL_CSS = `
-* {
-  font-family: monospace !important;
-}
-`;
-
-// Helper to check state
-async function getSettings(tabId) {
+// Get state for specific tab
+async function getTabState(tabId) {
   const settings = await chrome.storage.local.get(['globalEnabled', 'forceAll', 'tabOverrides']);
   const globalEnabled = settings.globalEnabled ?? false;
   const forceAll = settings.forceAll ?? false;
@@ -28,46 +13,31 @@ async function getSettings(tabId) {
   return { isEnabled, forceAll };
 }
 
-// Apply or remove CSS
-async function updateTabStyle(tabId) {
-  try {
-    const { isEnabled, forceAll } = await getSettings(tabId);
-    
-    // Always remove first to avoid double injection conflicts
-    await chrome.scripting.removeCSS({ target: { tabId }, css: TARGETED_CSS, origin: 'USER' });
-    await chrome.scripting.removeCSS({ target: { tabId }, css: FORCE_ALL_CSS, origin: 'USER' });
-
-    if (isEnabled) {
-      const cssToInject = forceAll ? FORCE_ALL_CSS : TARGETED_CSS;
-      await chrome.scripting.insertCSS({
-        target: { tabId },
-        css: cssToInject,
-        origin: 'USER'
-      });
-    }
-  } catch (err) {
-    console.debug(`Update failed for tab ${tabId}: ${err.message}`);
+// Notify all tabs of state change
+async function broadcastUpdate(tabId = null) {
+  if (tabId) {
+    chrome.tabs.sendMessage(tabId, { action: 'stateChanged' }).catch(() => {});
+  } else {
+    const tabs = await chrome.tabs.query({});
+    tabs.forEach(tab => {
+      chrome.tabs.sendMessage(tab.id, { action: 'stateChanged' }).catch(() => {});
+    });
   }
 }
 
-// Listen for messages from popup
+// Handle cross-script messages
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.action === 'updateState') {
-    if (message.tabId) {
-      updateTabStyle(message.tabId);
-    } else {
-      // Update all active tabs
-      chrome.tabs.query({}, (tabs) => {
-        tabs.forEach(tab => updateTabStyle(tab.id));
-      });
-    }
+    broadcastUpdate(message.tabId);
+    return;
   }
-});
 
-// Apply on page load
-chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
-  if (changeInfo.status === 'loading' || changeInfo.status === 'complete') {
-    updateTabStyle(tabId);
+  if (message.action === 'getTabState') {
+    const tabId = sender.tab?.id;
+    if (tabId) {
+      getTabState(tabId).then(sendResponse);
+      return true; // Keep channel open for async response
+    }
   }
 });
 
