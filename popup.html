@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>System Mono</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <img src="icons/icon48.png" alt="Logo" class="logo">
+      <h1>System Mono</h1>
+    </header>
+
+    <div class="control-list">
+      <div class="control-item">
+        <div class="item-info">
+          <span class="label">Enabled Global</span>
+          <span class="sub-label">Active on all tabs</span>
+        </div>
+        <label class="switch">
+          <input type="checkbox" id="global-toggle">
+          <span class="slider round"></span>
+        </label>
+      </div>
+
+      <div class="control-item">
+        <div class="item-info">
+          <span class="label">Force All Text</span>
+          <span class="sub-label">Monospace everything</span>
+        </div>
+        <label class="switch">
+          <input type="checkbox" id="force-all-toggle">
+          <span class="slider round"></span>
+        </label>
+      </div>
+
+      <div class="divider"></div>
+
+      <div class="control-item secondary">
+        <div class="item-info">
+          <span class="label" id="tab-status-label">This Tab</span>
+          <span class="sub-label" id="tab-description">Tab override</span>
+        </div>
+        <label class="switch">
+          <input type="checkbox" id="tab-toggle">
+          <span class="slider round"></span>
+        </label>
+      </div>
+    </div>
+  </div>
+  <script src="popup.js"></script>
+</body>
+</html>
