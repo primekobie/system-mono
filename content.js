@@ -45,8 +45,9 @@ const observer = new MutationObserver((mutations) => {
 });
 
 async function updateState() {
-    const settings = await chrome.storage.local.get(['globalEnabled', 'forceAll', 'tabOverrides']);
-    
+    const settings = await chrome.storage.local.get(['globalEnabled', 'forceAll', 'siteOverrides']);
+    const siteOverrides = settings.siteOverrides ?? {};
+    const hostname = window.location.hostname;
     
     // Get current tab settings
     chrome.runtime.sendMessage({ action: 'getTabState' }, (response) => {
@@ -63,9 +64,6 @@ async function updateState() {
                 subtree: true
             });
         } else if (oldEnabled && !isEnabled) {
-            // If it was on and now is off, we unfortunately have to reload 
-            // or manually undo for a "perfect" experience, 
-            // but usually a refresh is expected for font changes.
             observer.disconnect();
         }
     });

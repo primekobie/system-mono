@@ -8,30 +8,34 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Setup tab state
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   if (!tab) return;
-  const tabId = tab.id;
+  const url = tab.url;
+  let hostname = "";
+  try {
+    hostname = new URL(url).hostname;
+  } catch (e) {}
 
   // Load settings
-  const settings = await chrome.storage.local.get(['globalEnabled', 'forceAll', 'tabOverrides']);
+  const settings = await chrome.storage.local.get(['globalEnabled', 'forceAll', 'siteOverrides']);
   const globalEnabled = settings.globalEnabled ?? false;
   const forceAll = settings.forceAll ?? false;
-  const tabOverrides = settings.tabOverrides ?? {};
+  const siteOverrides = settings.siteOverrides ?? {};
 
-  // Current tab state
-  let tabEffectiveState = globalEnabled;
-  if (tabId in tabOverrides) {
-    tabEffectiveState = tabOverrides[tabId];
+  // Current site state
+  let siteEffectiveState = globalEnabled;
+  if (hostname && hostname in siteOverrides) {
+    siteEffectiveState = siteOverrides[hostname];
   }
 
   // Initial UI
   globalToggle.checked = globalEnabled;
   forceAllToggle.checked = forceAll;
-  tabToggle.checked = tabEffectiveState;
-  updateTabUI(tabEffectiveState);
+  tabToggle.checked = siteEffectiveState;
+  updateTabUI(siteEffectiveState);
 
   // Event listeners
   globalToggle.addEventListener('change', async () => {
     const isEnabled = globalToggle.checked;
-    await chrome.storage.local.set({ globalEnabled: isEnabled, tabOverrides: {} });
+    await chrome.storage.local.set({ globalEnabled: isEnabled, siteOverrides: {} });
     chrome.runtime.sendMessage({ action: 'updateState' });
     tabToggle.checked = isEnabled;
     updateTabUI(isEnabled);
@@ -43,15 +47,18 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
 
   tabToggle.addEventListener('change', async () => {
-    const overrides = (await chrome.storage.local.get(['tabOverrides'])).tabOverrides ?? {};
-    overrides[tabId] = tabToggle.checked;
-    await chrome.storage.local.set({ tabOverrides: overrides });
-    chrome.runtime.sendMessage({ action: 'updateState', tabId });
+    if (!hostname) return;
+    const settings = await chrome.storage.local.get(['siteOverrides']);
+    const overrides = settings.siteOverrides ?? {};
+    overrides[hostname] = tabToggle.checked;
+    await chrome.storage.local.set({ siteOverrides: overrides });
+    chrome.runtime.sendMessage({ action: 'updateState' });
     updateTabUI(tabToggle.checked);
   });
 
   function updateTabUI(isOn) {
-    tabStatusLabel.textContent = isOn ? "Active for this tab" : "Inactive for this tab";
-    tabDescription.textContent = isOn ? "System Mono is running" : "Original fonts active";
+    tabStatusLabel.textContent = isOn ? "Active for this site" : "Inactive for this site";
+    tabDescription.textContent = isOn ? `${hostname} is fixed` : `Original fonts on ${hostname}`;
   }
 });
+

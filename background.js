@@ -1,13 +1,18 @@
-// Get state for specific tab
-async function getTabState(tabId) {
-  const settings = await chrome.storage.local.get(['globalEnabled', 'forceAll', 'tabOverrides']);
+// Get state for specific site
+async function getSiteState(url) {
+  const settings = await chrome.storage.local.get(['globalEnabled', 'forceAll', 'siteOverrides']);
   const globalEnabled = settings.globalEnabled ?? false;
   const forceAll = settings.forceAll ?? false;
-  const tabOverrides = settings.tabOverrides ?? {};
+  const siteOverrides = settings.siteOverrides ?? {};
   
+  let hostname = "";
+  try {
+    hostname = new URL(url).hostname;
+  } catch(e) {}
+
   let isEnabled = globalEnabled;
-  if (tabId in tabOverrides) {
-    isEnabled = tabOverrides[tabId];
+  if (hostname && hostname in siteOverrides) {
+    isEnabled = siteOverrides[hostname];
   }
   
   return { isEnabled, forceAll };
@@ -33,20 +38,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 
   if (message.action === 'getTabState') {
-    const tabId = sender.tab?.id;
-    if (tabId) {
-      getTabState(tabId).then(sendResponse);
-      return true; // Keep channel open for async response
+    const url = sender.tab?.url;
+    if (url) {
+      getSiteState(url).then(sendResponse);
+      return true;
     }
   }
 });
 
-// Clean up overrides when tab is closed
-chrome.tabs.onRemoved.addListener(async (tabId) => {
-  const settings = await chrome.storage.local.get(['tabOverrides']);
-  const overrides = settings.tabOverrides ?? {};
-  if (tabId in overrides) {
-    delete overrides[tabId];
-    await chrome.storage.local.set({ tabOverrides: overrides });
-  }
-});
